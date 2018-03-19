@@ -95,7 +95,7 @@ dequeue_huge_page_node
 
 
 
-The closest OVS and DPDK upstream versions in Ericsson's OVS and DPDK is the following: 
+The closest OVS and DPDK upstream versions in Ericssons OVS and DPDK is the following: 
 
 DPDK version 2.2, last upstream commit seen from Ericsson DPDK is: 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
