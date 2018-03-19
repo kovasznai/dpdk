@@ -1855,7 +1855,7 @@ free_mem_region(struct virtio_net *dev)
         region = orig_region(dev->mem, dev->mem->nregions);
         for (idx = 0; idx < dev->mem->nregions; idx++) {
                 if (region[idx].mapped_address) {
-                        munmap((void *)(uintptr_t)region[idx].mapped_address,          <======= Gabor's debug check here
+                        munmap((void *)(uintptr_t)region[idx].mapped_address,          <======= Gabors debug check here
                                         region[idx].mapped_size);
                         close(region[idx].fd);
                 }
