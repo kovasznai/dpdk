@@ -83,7 +83,7 @@ struct orig_region_map {
 struct device * get_device(struct device * dev);
 
 get_device() will return a pointer to the struct device passed to it
-if the reference is not already 0 (if it's in the process of being
+if the reference is not already 0 (if its in the process of being
 removed already).
 
 
