@@ -1,385 +1,7 @@
 
 ##############################################################################################################################################
 
-
-
-
-
-2018-03-20T17:37:38.305265+00:00 compute-0-1 kernel: [1625342.861076] INFO: task kworker/u96:0:30946 blocked for more than 120 seconds.
-2018-03-20T17:37:38.305278+00:00 compute-0-1 kernel: [1625342.861079]       Not tainted 4.4.0-91-generic #114~14.04.1-Ubuntu
-2018-03-20T17:37:38.305280+00:00 compute-0-1 kernel: [1625342.861080] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-2018-03-20T17:37:38.305281+00:00 compute-0-1 kernel: [1625342.861081] kworker/u96:0   D ffff8811b2cb7c58     0 30946      2 0x00000080
-2018-03-20T17:37:38.305283+00:00 compute-0-1 kernel: [1625342.861104] Workqueue: kvm-irqfd-cleanup irqfd_shutdown [kvm]
-2018-03-20T17:37:38.305289+00:00 compute-0-1 kernel: [1625342.861106]  ffff8811b2cb7c58 ffff881038f12a00 ffff88028d6d8000 ffff8811b2cb8000
-2018-03-20T17:37:38.305291+00:00 compute-0-1 kernel: [1625342.861108]  ffff8811b2cb7da8 ffff8811b2cb7da0 ffff88028d6d8000 ffff8812b592eae0
-2018-03-20T17:37:38.305292+00:00 compute-0-1 kernel: [1625342.861109]  ffff8811b2cb7c70 ffffffff818094b5 7fffffffffffffff ffff8811b2cb7d18
-2018-03-20T17:37:38.305293+00:00 compute-0-1 kernel: [1625342.861111] Call Trace:
-2018-03-20T17:37:38.305293+00:00 compute-0-1 kernel: [1625342.861117]  [<ffffffff818094b5>] schedule+0x35/0x80
-2018-03-20T17:37:38.305294+00:00 compute-0-1 kernel: [1625342.861119]  [<ffffffff8180be77>] schedule_timeout+0x237/0x2d0
-2018-03-20T17:37:38.305294+00:00 compute-0-1 kernel: [1625342.861122]  [<ffffffff810a7309>] ? resched_curr+0xa9/0xd0
-2018-03-20T17:37:38.305295+00:00 compute-0-1 kernel: [1625342.861123]  [<ffffffff810a7d45>] ? check_preempt_curr+0x75/0x90
-2018-03-20T17:37:38.305296+00:00 compute-0-1 kernel: [1625342.861125]  [<ffffffff810a8919>] ? try_to_wake_up+0x49/0x3d0
-2018-03-20T17:37:38.305297+00:00 compute-0-1 kernel: [1625342.861127]  [<ffffffff810b31df>] ? update_curr+0xdf/0x170
-2018-03-20T17:37:38.305298+00:00 compute-0-1 kernel: [1625342.861129]  [<ffffffff81809dd4>] wait_for_completion+0xa4/0x110
-2018-03-20T17:37:38.305299+00:00 compute-0-1 kernel: [1625342.861130]  [<ffffffff810a8d40>] ? wake_up_q+0x80/0x80
-2018-03-20T17:37:38.305299+00:00 compute-0-1 kernel: [1625342.861133]  [<ffffffff81096127>] flush_work+0xf7/0x170
-2018-03-20T17:37:38.305300+00:00 compute-0-1 kernel: [1625342.861134]  [<ffffffff81093f80>] ? destroy_worker+0x90/0x90
-2018-03-20T17:37:38.305301+00:00 compute-0-1 kernel: [1625342.861142]  [<ffffffffc0450506>] irqfd_shutdown+0x36/0x80 [kvm]
-2018-03-20T17:37:38.305302+00:00 compute-0-1 kernel: [1625342.861144]  [<ffffffff81096da0>] process_one_work+0x150/0x3f0
-2018-03-20T17:37:38.305303+00:00 compute-0-1 kernel: [1625342.861145]  [<ffffffff8109751a>] worker_thread+0x11a/0x470
-2018-03-20T17:37:38.305304+00:00 compute-0-1 kernel: [1625342.861147]  [<ffffffff81097400>] ? rescuer_thread+0x310/0x310
-2018-03-20T17:37:38.305304+00:00 compute-0-1 kernel: [1625342.861149]  [<ffffffff8109cdd6>] kthread+0xd6/0xf0
-2018-03-20T17:37:38.305305+00:00 compute-0-1 kernel: [1625342.861150]  [<ffffffff8109cd00>] ? kthread_park+0x60/0x60
-2018-03-20T17:37:38.305306+00:00 compute-0-1 kernel: [1625342.861151]  [<ffffffff8180d0cf>] ret_from_fork+0x3f/0x70
-2018-03-20T17:37:38.305307+00:00 compute-0-1 kernel: [1625342.861152]  [<ffffffff8109cd00>] ? kthread_park+0x60/0x60
-
-
-
-
-./virt/kvm/kvm_main.c
-
-static long kvm_vm_ioctl(struct file *filp,
-                           unsigned int ioctl, unsigned long arg)
-{
-        struct kvm *kvm = filp->private_data;
-        void __user *argp = (void __user *)arg;
-        int r;
-
-        if (kvm->mm != current->mm)
-                return -EIO;
-        switch (ioctl) {
-        case KVM_CREATE_VCPU:
-                r = kvm_vm_ioctl_create_vcpu(kvm, arg);
-                break;
-        case KVM_SET_USER_MEMORY_REGION: {
-                struct kvm_userspace_memory_region kvm_userspace_mem;
-
-                r = -EFAULT;
-                if (copy_from_user(&kvm_userspace_mem, argp,
-                                                sizeof(kvm_userspace_mem)))
-                        goto out;
-
-                r = kvm_vm_ioctl_set_memory_region(kvm, &kvm_userspace_mem);
-                break;
-        }
-        case KVM_GET_DIRTY_LOG: {
-                struct kvm_dirty_log log;
-
-                r = -EFAULT;
-                if (copy_from_user(&log, argp, sizeof(log)))
-                        goto out;
-                r = kvm_vm_ioctl_get_dirty_log(kvm, &log);
-                break;
-        }
-#ifdef KVM_COALESCED_MMIO_PAGE_OFFSET
-        case KVM_REGISTER_COALESCED_MMIO: {
-                struct kvm_coalesced_mmio_zone zone;
-
-                r = -EFAULT;
-                if (copy_from_user(&zone, argp, sizeof(zone)))
-                        goto out;
-                r = kvm_vm_ioctl_register_coalesced_mmio(kvm, &zone);
-                break;
-        }
-        case KVM_UNREGISTER_COALESCED_MMIO: {
-                struct kvm_coalesced_mmio_zone zone;
-
-                r = -EFAULT;
-                if (copy_from_user(&zone, argp, sizeof(zone)))
-                        goto out;
-                r = kvm_vm_ioctl_unregister_coalesced_mmio(kvm, &zone);
-                break;
-        }
-#endif
-        case KVM_IRQFD: {
-                struct kvm_irqfd data;
-
-                r = -EFAULT;
-                if (copy_from_user(&data, argp, sizeof(data)))
-                        goto out;
-                r = kvm_irqfd(kvm, &data);                 ===========================>  kvm_irqfd
-                break;
-        }
-        case KVM_IOEVENTFD: {
-                struct kvm_ioeventfd data;
-
-                r = -EFAULT;
-                if (copy_from_user(&data, argp, sizeof(data)))
-                        goto out;
-                r = kvm_ioeventfd(kvm, &data);
-                break;
-        }
-#ifdef CONFIG_HAVE_KVM_MSI
-        case KVM_SIGNAL_MSI: {
-                struct kvm_msi msi;
-
-                r = -EFAULT;
-                if (copy_from_user(&msi, argp, sizeof(msi)))
-                        goto out;
-                r = kvm_send_userspace_msi(kvm, &msi);
-                break;
-        }
-#endif
-#ifdef __KVM_HAVE_IRQ_LINE
-        case KVM_IRQ_LINE_STATUS:
-        case KVM_IRQ_LINE: {
-                struct kvm_irq_level irq_event;
-
-                r = -EFAULT;
-                if (copy_from_user(&irq_event, argp, sizeof(irq_event)))
-                        goto out;
-
-                r = kvm_vm_ioctl_irq_line(kvm, &irq_event,
-                                        ioctl == KVM_IRQ_LINE_STATUS);
-                if (r)
-                        goto out;
-
-                r = -EFAULT;
-                if (ioctl == KVM_IRQ_LINE_STATUS) {
-                        if (copy_to_user(argp, &irq_event, sizeof(irq_event)))
-                                goto out;
-                }
-
-                r = 0;
-                break;
-        }
-#endif
-#ifdef CONFIG_HAVE_KVM_IRQ_ROUTING
-        case KVM_SET_GSI_ROUTING: {
-                struct kvm_irq_routing routing;
-                struct kvm_irq_routing __user *urouting;
-                struct kvm_irq_routing_entry *entries;
-
-                r = -EFAULT;
-                if (copy_from_user(&routing, argp, sizeof(routing)))
-                        goto out;
-                r = -EINVAL;
-                if (routing.nr > KVM_MAX_IRQ_ROUTES)
-                        goto out;
-                if (routing.flags)
-                        goto out;
-                r = -ENOMEM;
-                entries = vmalloc(routing.nr * sizeof(*entries));
-                if (!entries)
-                        goto out;
-                r = -EFAULT;
-                urouting = argp;
-                if (copy_from_user(entries, urouting->entries,
-                                   routing.nr * sizeof(*entries)))
-                        goto out_free_irq_routing;
-                r = kvm_set_irq_routing(kvm, entries, routing.nr,
-                                        routing.flags);
-out_free_irq_routing:
-                vfree(entries);
-                break;
-        }
-#endif /* CONFIG_HAVE_KVM_IRQ_ROUTING */
-        case KVM_CREATE_DEVICE: {
-                struct kvm_create_device cd;
-
-                r = -EFAULT;
-                if (copy_from_user(&cd, argp, sizeof(cd)))
-                        goto out;
-
-                r = kvm_ioctl_create_device(kvm, &cd);
-                if (r)
-                        goto out;
-
-                r = -EFAULT;
-                if (copy_to_user(argp, &cd, sizeof(cd)))
-                        goto out;
-
-                r = 0;
-                break;
-        }
-        case KVM_CHECK_EXTENSION:
-                r = kvm_vm_ioctl_check_extension_generic(kvm, arg);
-                break;
-        default:
-                r = kvm_arch_vm_ioctl(filp, ioctl, arg);
-        }
-out:
-        return r;
-}
-
-
------------------------------------------------------------------------------
-
-./virt/kvm/eventfd.c:304:	INIT_WORK(&irqfd->shutdown, irqfd_shutdown);
-
-int
-kvm_irqfd(struct kvm *kvm, struct kvm_irqfd *args)
-{
-        if (args->flags & ~(KVM_IRQFD_FLAG_DEASSIGN | KVM_IRQFD_FLAG_RESAMPLE))
-                return -EINVAL;
-
-        if (args->flags & KVM_IRQFD_FLAG_DEASSIGN)
-                return kvm_irqfd_deassign(kvm, args);
-
-        return kvm_irqfd_assign(kvm, args);
-}
-
------------------------------------------------------------------------------
-
-./virt/kvm/eventfd.c
-
-static int
-kvm_irqfd_assign(struct kvm *kvm, struct kvm_irqfd *args)
-{
-        struct kvm_kernel_irqfd *irqfd, *tmp;
-        struct fd f;
-        struct eventfd_ctx *eventfd = NULL, *resamplefd = NULL;
-        int ret;
-        unsigned int events;
-        int idx;
-
-        if (!kvm_arch_intc_initialized(kvm))
-                return -EAGAIN;
-
-        irqfd = kzalloc(sizeof(*irqfd), GFP_KERNEL);
-        if (!irqfd)
-                return -ENOMEM;
-
-        irqfd->kvm = kvm;
-        irqfd->gsi = args->gsi;
-        INIT_LIST_HEAD(&irqfd->list);
-        INIT_WORK(&irqfd->inject, irqfd_inject);
-        INIT_WORK(&irqfd->shutdown, irqfd_shutdown);       ==============> irqfd_shutdown
-        seqcount_init(&irqfd->irq_entry_sc);
-
-        f = fdget(args->fd);
-        if (!f.file) {
-                ret = -EBADF;
-                goto out;
-        }
-
-        eventfd = eventfd_ctx_fileget(f.file);
-        if (IS_ERR(eventfd)) {
-                ret = PTR_ERR(eventfd);
-                goto fail;
-        }
-
-        irqfd->eventfd = eventfd;
-
-        if (args->flags & KVM_IRQFD_FLAG_RESAMPLE) {
-                struct kvm_kernel_irqfd_resampler *resampler;
-
-                resamplefd = eventfd_ctx_fdget(args->resamplefd);
-                if (IS_ERR(resamplefd)) {
-                        ret = PTR_ERR(resamplefd);
-                        goto fail;
-                }
-
-                irqfd->resamplefd = resamplefd;
-                INIT_LIST_HEAD(&irqfd->resampler_link);
-
-                mutex_lock(&kvm->irqfds.resampler_lock);
-
-                list_for_each_entry(resampler,
-                                    &kvm->irqfds.resampler_list, link) {
-                        if (resampler->notifier.gsi == irqfd->gsi) {
-                                irqfd->resampler = resampler;
-                                break;
-                        }
-                }
-
-                if (!irqfd->resampler) {
-                        resampler = kzalloc(sizeof(*resampler), GFP_KERNEL);
-                        if (!resampler) {
-                                ret = -ENOMEM;
-                                mutex_unlock(&kvm->irqfds.resampler_lock);
-                                goto fail;
-                        }
-
-                        resampler->kvm = kvm;
-                        INIT_LIST_HEAD(&resampler->list);
-                        resampler->notifier.gsi = irqfd->gsi;
-                        resampler->notifier.irq_acked = irqfd_resampler_ack;
-                        INIT_LIST_HEAD(&resampler->link);
-
-                        list_add(&resampler->link, &kvm->irqfds.resampler_list);
-                        kvm_register_irq_ack_notifier(kvm,
-                                                      &resampler->notifier);
-                        irqfd->resampler = resampler;
-                }
-
-                list_add_rcu(&irqfd->resampler_link, &irqfd->resampler->list);
-                synchronize_srcu(&kvm->irq_srcu);
-
-                mutex_unlock(&kvm->irqfds.resampler_lock);
-        }
-
-        /*
-         * Install our own custom wake-up handling so we are notified via
-         * a callback whenever someone signals the underlying eventfd
-         */
-        init_waitqueue_func_entry(&irqfd->wait, irqfd_wakeup);
-        init_poll_funcptr(&irqfd->pt, irqfd_ptable_queue_proc);
-
-        spin_lock_irq(&kvm->irqfds.lock);
-
-        ret = 0;
-        list_for_each_entry(tmp, &kvm->irqfds.items, list) {
-                if (irqfd->eventfd != tmp->eventfd)
-                        continue;
-                /* This fd is used for another irq already. */
-                ret = -EBUSY;
-                spin_unlock_irq(&kvm->irqfds.lock);
-                goto fail;
-        }
-
-        idx = srcu_read_lock(&kvm->irq_srcu);
-        irqfd_update(kvm, irqfd);
-        srcu_read_unlock(&kvm->irq_srcu, idx);
-
-        list_add_tail(&irqfd->list, &kvm->irqfds.items);
-
-        spin_unlock_irq(&kvm->irqfds.lock);
-
-        /*
-         * Check if there was an event already pending on the eventfd
-         * before we registered, and trigger it as if we didn't miss it.
-         */
-        events = f.file->f_op->poll(f.file, &irqfd->pt);
-
-        if (events & POLLIN)
-                schedule_work(&irqfd->inject);
-
-        /*
-         * do not drop the file until the irqfd is fully initialized, otherwise
-         * we might race against the POLLHUP
-         */
-        fdput(f);
-#ifdef CONFIG_HAVE_KVM_IRQ_BYPASS
-        irqfd->consumer.token = (void *)irqfd->eventfd;
-        irqfd->consumer.add_producer = kvm_arch_irq_bypass_add_producer;
-        irqfd->consumer.del_producer = kvm_arch_irq_bypass_del_producer;
-        irqfd->consumer.stop = kvm_arch_irq_bypass_stop;
-        irqfd->consumer.start = kvm_arch_irq_bypass_start;
-        ret = irq_bypass_register_consumer(&irqfd->consumer);
-        if (ret)
-                pr_info("irq bypass consumer (token %p) registration fails: %d\n",
-                                irqfd->consumer.token, ret);
-#endif
-
-        return 0;
-
-fail:
-        if (irqfd->resampler)
-                irqfd_resampler_shutdown(irqfd);
-
-        if (resamplefd && !IS_ERR(resamplefd))
-                eventfd_ctx_put(resamplefd);
-
-        if (eventfd && !IS_ERR(eventfd))
-                eventfd_ctx_put(eventfd);
-
-        fdput(f);
-
-out:
-        kfree(irqfd);
-        return ret;
-}
+KVM INIT
 
 -----------------------------------------------------------------------------
 
@@ -522,9 +144,8 @@ int kvm_irqfd_init(void)
         return 0;
 }
 
-
-
-============================================================================
+-----------------------------------------------------------------------------
+==========================================================================================================================
 
 
 2018-03-20T17:37:38.305265+00:00 compute-0-1 kernel: [1625342.861076] INFO: task kworker/u96:0:30946 blocked for more than 120 seconds.
@@ -555,6 +176,224 @@ int kvm_irqfd_init(void)
 2018-03-20T17:37:38.305306+00:00 compute-0-1 kernel: [1625342.861151]  [<ffffffff8180d0cf>] ret_from_fork+0x3f/0x70
 2018-03-20T17:37:38.305307+00:00 compute-0-1 kernel: [1625342.861152]  [<ffffffff8109cd00>] ? kthread_park+0x60/0x60
 
+-----------------------------------------------------------------------------
+
+ [<ffffffff8180d0cf>] ret_from_fork+0x3f/0x70
+
+./arch/metag/kernel/traps.c:882:int ret_from_fork(TBIRES arg)
+
+int ret_from_fork(TBIRES arg)
+{
+        struct task_struct *prev = arg.Switch.pPara;
+        struct task_struct *tsk = current;
+        struct pt_regs *regs = task_pt_regs(tsk);
+        int (*fn)(void *);
+        TBIRES Next;
+
+        schedule_tail(prev);
+
+        if (tsk->flags & PF_KTHREAD) {
+                fn = (void *)regs->ctx.DX[4].U1;
+                BUG_ON(!fn);
+
+                fn((void *)regs->ctx.DX[3].U1);
+        }
+
+        if (test_syscall_work())
+                syscall_trace_leave(regs);
+
+        preempt_disable();
+
+        Next.Sig.TrigMask = get_trigger_mask();
+        Next.Sig.SaveMask = 0;
+        Next.Sig.pCtx = &regs->ctx;
+
+        set_gateway_tls(current->thread.tls_ptr);
+
+        preempt_enable_no_resched();
+
+        /* And interrupts should come back on when we resume the real usermode
+         * code. Call __TBIASyncResume()
+         */
+        __TBIASyncResume(tail_end(Next));
+        /* ASyncResume should NEVER return */
+        BUG();
+        return 0;
+}
+
+
+-----------------------------------------------------------------------------
+
+
+[<ffffffff8109cdd6>] kthread+0xd6/0xf0
+
+./kernel/kthread.c:178:static int kthread(void *_create)
+
+static int kthread(void *_create)
+{
+        /* Copy data: it's on kthread's stack */
+        struct kthread_create_info *create = _create;
+        int (*threadfn)(void *data) = create->threadfn;
+        void *data = create->data;
+        struct completion *done;
+        struct kthread self;
+        int ret;
+
+        self.flags = 0;
+        self.data = data;
+        init_completion(&self.exited);
+        init_completion(&self.parked);
+        current->vfork_done = &self.exited;
+
+        /* If user was SIGKILLed, I release the structure. */
+        done = xchg(&create->done, NULL);
+        if (!done) {
+                kfree(create);
+                do_exit(-EINTR);
+        }
+        /* OK, tell user we're spawned, wait for stop or wakeup */
+        __set_current_state(TASK_UNINTERRUPTIBLE);
+        create->result = current;
+        complete(done);
+        schedule();
+
+        ret = -EINTR;
+
+        if (!test_bit(KTHREAD_SHOULD_STOP, &self.flags)) {
+                cgroup_kthread_ready();
+                __kthread_parkme(&self);
+                ret = threadfn(data);
+        }
+        /* we can't just return, we must preserve "self" on stack */
+        do_exit(ret);
+}
+
+
+2018-03-20T17:37:38.305265+00:00 compute-0-1 kernel: [1625342.861076] INFO: task kworker/u96:0:30946 blocked for more than 120 seconds.
+2018-03-20T17:37:38.305278+00:00 compute-0-1 kernel: [1625342.861079]       Not tainted 4.4.0-91-generic #114~14.04.1-Ubuntu
+2018-03-20T17:37:38.305280+00:00 compute-0-1 kernel: [1625342.861080] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+2018-03-20T17:37:38.305281+00:00 compute-0-1 kernel: [1625342.861081] kworker/u96:0   D ffff8811b2cb7c58     0 30946      2 0x00000080
+2018-03-20T17:37:38.305283+00:00 compute-0-1 kernel: [1625342.861104] Workqueue: kvm-irqfd-cleanup irqfd_shutdown [kvm]
+2018-03-20T17:37:38.305289+00:00 compute-0-1 kernel: [1625342.861106]  ffff8811b2cb7c58 ffff881038f12a00 ffff88028d6d8000 ffff8811b2cb8000
+2018-03-20T17:37:38.305291+00:00 compute-0-1 kernel: [1625342.861108]  ffff8811b2cb7da8 ffff8811b2cb7da0 ffff88028d6d8000 ffff8812b592eae0
+2018-03-20T17:37:38.305292+00:00 compute-0-1 kernel: [1625342.861109]  ffff8811b2cb7c70 ffffffff818094b5 7fffffffffffffff ffff8811b2cb7d18
+2018-03-20T17:37:38.305293+00:00 compute-0-1 kernel: [1625342.861111] Call Trace:
+2018-03-20T17:37:38.305293+00:00 compute-0-1 kernel: [1625342.861117]  [<ffffffff818094b5>] schedule+0x35/0x80
+2018-03-20T17:37:38.305294+00:00 compute-0-1 kernel: [1625342.861119]  [<ffffffff8180be77>] schedule_timeout+0x237/0x2d0
+2018-03-20T17:37:38.305294+00:00 compute-0-1 kernel: [1625342.861122]  [<ffffffff810a7309>] ? resched_curr+0xa9/0xd0
+2018-03-20T17:37:38.305295+00:00 compute-0-1 kernel: [1625342.861123]  [<ffffffff810a7d45>] ? check_preempt_curr+0x75/0x90
+2018-03-20T17:37:38.305296+00:00 compute-0-1 kernel: [1625342.861125]  [<ffffffff810a8919>] ? try_to_wake_up+0x49/0x3d0
+2018-03-20T17:37:38.305297+00:00 compute-0-1 kernel: [1625342.861127]  [<ffffffff810b31df>] ? update_curr+0xdf/0x170
+2018-03-20T17:37:38.305298+00:00 compute-0-1 kernel: [1625342.861129]  [<ffffffff81809dd4>] wait_for_completion+0xa4/0x110
+2018-03-20T17:37:38.305299+00:00 compute-0-1 kernel: [1625342.861130]  [<ffffffff810a8d40>] ? wake_up_q+0x80/0x80
+2018-03-20T17:37:38.305299+00:00 compute-0-1 kernel: [1625342.861133]  [<ffffffff81096127>] flush_work+0xf7/0x170
+2018-03-20T17:37:38.305300+00:00 compute-0-1 kernel: [1625342.861134]  [<ffffffff81093f80>] ? destroy_worker+0x90/0x90
+2018-03-20T17:37:38.305301+00:00 compute-0-1 kernel: [1625342.861142]  [<ffffffffc0450506>] irqfd_shutdown+0x36/0x80 [kvm]
+2018-03-20T17:37:38.305302+00:00 compute-0-1 kernel: [1625342.861144]  [<ffffffff81096da0>] process_one_work+0x150/0x3f0
+2018-03-20T17:37:38.305303+00:00 compute-0-1 kernel: [1625342.861145]  [<ffffffff8109751a>] worker_thread+0x11a/0x470
+2018-03-20T17:37:38.305304+00:00 compute-0-1 kernel: [1625342.861147]  [<ffffffff81097400>] ? rescuer_thread+0x310/0x310
+2018-03-20T17:37:38.305304+00:00 compute-0-1 kernel: [1625342.861149]  [<ffffffff8109cdd6>] kthread+0xd6/0xf0
+2018-03-20T17:37:38.305305+00:00 compute-0-1 kernel: [1625342.861150]  [<ffffffff8109cd00>] ? kthread_park+0x60/0x60
+2018-03-20T17:37:38.305306+00:00 compute-0-1 kernel: [1625342.861151]  [<ffffffff8180d0cf>] ret_from_fork+0x3f/0x70
+2018-03-20T17:37:38.305307+00:00 compute-0-1 kernel: [1625342.861152]  [<ffffffff8109cd00>] ? kthread_park+0x60/0x60
+
+-----------------------------------------------------------------------------
+
+ [<ffffffff8109751a>] worker_thread+0x11a/0x470
+
+./kernel/workqueue.c:2139:static int worker_thread(void *__worker)
+/**
+ * worker_thread - the worker thread function
+ * @__worker: self
+ *
+ * The worker thread function.  All workers belong to a worker_pool -
+ * either a per-cpu one or dynamic unbound one.  These workers process all
+ * work items regardless of their specific target workqueue.  The only
+ * exception is work items which belong to workqueues with a rescuer which
+ * will be explained in rescuer_thread().
+ *
+ * Return: 0
+ */
+static int worker_thread(void *__worker)
+{
+        struct worker *worker = __worker;
+        struct worker_pool *pool = worker->pool;
+
+        /* tell the scheduler that this is a workqueue worker */
+        worker->task->flags |= PF_WQ_WORKER;
+woke_up:
+        spin_lock_irq(&pool->lock);
+
+        /* am I supposed to die? */
+        if (unlikely(worker->flags & WORKER_DIE)) {
+                spin_unlock_irq(&pool->lock);
+                WARN_ON_ONCE(!list_empty(&worker->entry));
+                worker->task->flags &= ~PF_WQ_WORKER;
+
+                set_task_comm(worker->task, "kworker/dying");
+                ida_simple_remove(&pool->worker_ida, worker->id);
+                worker_detach_from_pool(worker, pool);
+                kfree(worker);
+                return 0;
+        }
+
+        worker_leave_idle(worker);
+recheck:
+        /* no more worker necessary? */
+        if (!need_more_worker(pool))
+                goto sleep;
+
+        /* do we need to manage? */
+        if (unlikely(!may_start_working(pool)) && manage_workers(worker))
+                goto recheck;
+
+        /*
+         * ->scheduled list can only be filled while a worker is
+         * preparing to process a work or actually processing it.
+         * Make sure nobody diddled with it while I was sleeping.
+         */
+        WARN_ON_ONCE(!list_empty(&worker->scheduled));
+
+        /*
+         * Finish PREP stage.  We're guaranteed to have at least one idle
+         * worker or that someone else has already assumed the manager
+         * role.  This is where @worker starts participating in concurrency
+         * management if applicable and concurrency management is restored
+         * after being rebound.  See rebind_workers() for details.
+         */
+        worker_clr_flags(worker, WORKER_PREP | WORKER_REBOUND);
+
+        do {
+                struct work_struct *work =
+                        list_first_entry(&pool->worklist,
+                                         struct work_struct, entry);
+
+                if (likely(!(*work_data_bits(work) & WORK_STRUCT_LINKED))) {
+                        /* optimization path, not strictly necessary */
+                        process_one_work(worker, work);                ==============>  process_one_work
+                        if (unlikely(!list_empty(&worker->scheduled)))
+                                process_scheduled_works(worker);
+                } else {
+                        move_linked_works(work, &worker->scheduled, NULL);
+                        process_scheduled_works(worker);
+                }
+        } while (keep_working(pool));
+
+        worker_set_flags(worker, WORKER_PREP);
+sleep:
+        /*
+         * pool->lock is held and there's no work to process and no need to
+         * manage, sleep.  Workers are woken up only while holding
+         * pool->lock or from local cpu, so setting the current state
+         * before releasing pool->lock is enough to prevent losing any
+         * event.
+         */
+        worker_enter_idle(worker);
+        __set_current_state(TASK_INTERRUPTIBLE);
+        spin_unlock_irq(&pool->lock);
+        schedule();
+        goto woke_up;
+}
 
 
 
@@ -699,6 +538,450 @@ __acquires(&pool->lock)
         pwq_dec_nr_in_flight(pwq, work_color);
 }
 -----------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+./virt/kvm/kvm_main.c:2965:	.compat_ioctl   = kvm_vm_compat_ioctl,
+
+static struct file_operations kvm_vm_fops = {
+        .release        = kvm_vm_release,
+        .unlocked_ioctl = kvm_vm_ioctl,
+#ifdef CONFIG_KVM_COMPAT
+        .compat_ioctl   = kvm_vm_compat_ioctl,      ==========================>  kvm_vm_compat_ioctl
+#endif
+        .llseek         = noop_llseek,
+};
+
+
+-----------------------------------------------------------------------------
+
+./virt/kvm/kvm_main.c:2953:		r = kvm_vm_ioctl(filp, ioctl, arg);
+
+
+static long kvm_vm_compat_ioctl(struct file *filp,
+                           unsigned int ioctl, unsigned long arg)
+{
+        struct kvm *kvm = filp->private_data;
+        int r;
+
+        if (kvm->mm != current->mm)
+                return -EIO;
+        switch (ioctl) {
+        case KVM_GET_DIRTY_LOG: {
+                struct compat_kvm_dirty_log compat_log;
+                struct kvm_dirty_log log;
+
+                r = -EFAULT;
+                if (copy_from_user(&compat_log, (void __user *)arg,
+                                   sizeof(compat_log)))
+                        goto out;
+                log.slot         = compat_log.slot;
+                log.padding1     = compat_log.padding1;
+                log.padding2     = compat_log.padding2;
+                log.dirty_bitmap = compat_ptr(compat_log.dirty_bitmap);
+
+                r = kvm_vm_ioctl_get_dirty_log(kvm, &log);
+                break;
+        }
+        default:
+                r = kvm_vm_ioctl(filp, ioctl, arg);       ====================>  kvm_vm_ioctl
+        }
+
+out:
+        return r;
+}
+
+-----------------------------------------------------------------------------
+
+./virt/kvm/kvm_main.c:2812:		r = kvm_irqfd(kvm, &data);
+
+
+static long kvm_vm_ioctl(struct file *filp,
+                           unsigned int ioctl, unsigned long arg)
+{
+        struct kvm *kvm = filp->private_data;
+        void __user *argp = (void __user *)arg;
+        int r;
+
+        if (kvm->mm != current->mm)
+                return -EIO;
+        switch (ioctl) {
+        case KVM_CREATE_VCPU:
+                r = kvm_vm_ioctl_create_vcpu(kvm, arg);
+                break;
+        case KVM_SET_USER_MEMORY_REGION: {
+                struct kvm_userspace_memory_region kvm_userspace_mem;
+
+                r = -EFAULT;
+                if (copy_from_user(&kvm_userspace_mem, argp,
+                                                sizeof(kvm_userspace_mem)))
+                        goto out;
+
+                r = kvm_vm_ioctl_set_memory_region(kvm, &kvm_userspace_mem);
+                break;
+        }
+        case KVM_GET_DIRTY_LOG: {
+                struct kvm_dirty_log log;
+
+                r = -EFAULT;
+                if (copy_from_user(&log, argp, sizeof(log)))
+                        goto out;
+                r = kvm_vm_ioctl_get_dirty_log(kvm, &log);
+                break;
+        }
+#ifdef KVM_COALESCED_MMIO_PAGE_OFFSET
+        case KVM_REGISTER_COALESCED_MMIO: {
+                struct kvm_coalesced_mmio_zone zone;
+
+                r = -EFAULT;
+                if (copy_from_user(&zone, argp, sizeof(zone)))
+                        goto out;
+                r = kvm_vm_ioctl_register_coalesced_mmio(kvm, &zone);
+                break;
+        }
+        case KVM_UNREGISTER_COALESCED_MMIO: {
+                struct kvm_coalesced_mmio_zone zone;
+
+                r = -EFAULT;
+                if (copy_from_user(&zone, argp, sizeof(zone)))
+                        goto out;
+                r = kvm_vm_ioctl_unregister_coalesced_mmio(kvm, &zone);
+                break;
+        }
+#endif
+
+
+
+        case KVM_IRQFD: {
+                struct kvm_irqfd data;
+
+                r = -EFAULT;
+                if (copy_from_user(&data, argp, sizeof(data)))
+                        goto out;
+                r = kvm_irqfd(kvm, &data);          =======================> kvm_irqfd
+                break;
+        }
+
+
+
+        case KVM_IOEVENTFD: {
+                struct kvm_ioeventfd data;
+
+                r = -EFAULT;
+                if (copy_from_user(&data, argp, sizeof(data)))
+                        goto out;
+                r = kvm_ioeventfd(kvm, &data);
+                break;
+        }
+#ifdef CONFIG_HAVE_KVM_MSI
+        case KVM_SIGNAL_MSI: {
+                struct kvm_msi msi;
+
+                r = -EFAULT;
+                if (copy_from_user(&msi, argp, sizeof(msi)))
+                        goto out;
+                r = kvm_send_userspace_msi(kvm, &msi);
+                break;
+        }
+#endif
+#ifdef __KVM_HAVE_IRQ_LINE
+        case KVM_IRQ_LINE_STATUS:
+        case KVM_IRQ_LINE: {
+                struct kvm_irq_level irq_event;
+
+                r = -EFAULT;
+                if (copy_from_user(&irq_event, argp, sizeof(irq_event)))
+                        goto out;
+
+                r = kvm_vm_ioctl_irq_line(kvm, &irq_event,
+                                        ioctl == KVM_IRQ_LINE_STATUS);
+                if (r)
+                        goto out;
+
+                r = -EFAULT;
+                if (ioctl == KVM_IRQ_LINE_STATUS) {
+                        if (copy_to_user(argp, &irq_event, sizeof(irq_event)))
+                                goto out;
+                }
+
+                r = 0;
+                break;
+        }
+#endif
+#ifdef CONFIG_HAVE_KVM_IRQ_ROUTING
+                  case KVM_SET_GSI_ROUTING: {
+                struct kvm_irq_routing routing;
+                struct kvm_irq_routing __user *urouting;
+                struct kvm_irq_routing_entry *entries;
+
+                r = -EFAULT;
+                if (copy_from_user(&routing, argp, sizeof(routing)))
+                        goto out;
+                r = -EINVAL;
+                if (routing.nr > KVM_MAX_IRQ_ROUTES)
+                        goto out;
+                if (routing.flags)
+                        goto out;
+                r = -ENOMEM;
+                entries = vmalloc(routing.nr * sizeof(*entries));
+                if (!entries)
+                        goto out;
+                r = -EFAULT;
+                urouting = argp;
+                if (copy_from_user(entries, urouting->entries,
+                                   routing.nr * sizeof(*entries)))
+                        goto out_free_irq_routing;
+                r = kvm_set_irq_routing(kvm, entries, routing.nr,
+                                        routing.flags);
+out_free_irq_routing:
+                vfree(entries);
+                break;
+        }
+#endif /* CONFIG_HAVE_KVM_IRQ_ROUTING */
+        case KVM_CREATE_DEVICE: {
+                struct kvm_create_device cd;
+
+                r = -EFAULT;
+                if (copy_from_user(&cd, argp, sizeof(cd)))
+                        goto out;
+
+                r = kvm_ioctl_create_device(kvm, &cd);
+                if (r)
+                        goto out;
+
+                r = -EFAULT;
+                if (copy_to_user(argp, &cd, sizeof(cd)))
+                        goto out;
+
+                r = 0;
+                break;
+        }
+        case KVM_CHECK_EXTENSION:
+                r = kvm_vm_ioctl_check_extension_generic(kvm, arg);
+                break;
+        default:
+                r = kvm_arch_vm_ioctl(filp, ioctl, arg);
+        }
+out:
+        return r;
+}
+
+
+-----------------------------------------------------------------------------
+
+
+./virt/kvm/eventfd.c:570:	return kvm_irqfd_assign(kvm, args);
+
+
+int
+kvm_irqfd(struct kvm *kvm, struct kvm_irqfd *args)
+{
+        if (args->flags & ~(KVM_IRQFD_FLAG_DEASSIGN | KVM_IRQFD_FLAG_RESAMPLE))
+                return -EINVAL;
+
+        if (args->flags & KVM_IRQFD_FLAG_DEASSIGN)
+                return kvm_irqfd_deassign(kvm, args);
+
+        return kvm_irqfd_assign(kvm, args);          ========================>  kvm_irqfd_assign
+}
+
+-----------------------------------------------------------------------------
+
+./virt/kvm/eventfd.c:304:	INIT_WORK(&irqfd->shutdown, irqfd_shutdown);
+
+static int
+kvm_irqfd_assign(struct kvm *kvm, struct kvm_irqfd *args)
+{
+        struct kvm_kernel_irqfd *irqfd, *tmp;
+        struct fd f;
+        struct eventfd_ctx *eventfd = NULL, *resamplefd = NULL;
+        int ret;
+        unsigned int events;
+        int idx;
+
+        if (!kvm_arch_intc_initialized(kvm))
+                return -EAGAIN;
+
+        irqfd = kzalloc(sizeof(*irqfd), GFP_KERNEL);
+        if (!irqfd)
+                return -ENOMEM;
+
+        irqfd->kvm = kvm;
+        irqfd->gsi = args->gsi;
+        INIT_LIST_HEAD(&irqfd->list);
+        INIT_WORK(&irqfd->inject, irqfd_inject);
+        INIT_WORK(&irqfd->shutdown, irqfd_shutdown);         =====================> irqfd_shutdown
+        seqcount_init(&irqfd->irq_entry_sc);
+
+        f = fdget(args->fd);
+        if (!f.file) {
+                ret = -EBADF;
+                goto out;
+        }
+
+        eventfd = eventfd_ctx_fileget(f.file);
+        if (IS_ERR(eventfd)) {
+                ret = PTR_ERR(eventfd);
+                goto fail;
+        }
+
+        irqfd->eventfd = eventfd;
+
+        if (args->flags & KVM_IRQFD_FLAG_RESAMPLE) {
+                struct kvm_kernel_irqfd_resampler *resampler;
+
+                resamplefd = eventfd_ctx_fdget(args->resamplefd);
+                if (IS_ERR(resamplefd)) {
+                        ret = PTR_ERR(resamplefd);
+                        goto fail;
+                }
+
+                irqfd->resamplefd = resamplefd;
+                INIT_LIST_HEAD(&irqfd->resampler_link);
+
+                mutex_lock(&kvm->irqfds.resampler_lock);
+
+                list_for_each_entry(resampler,
+                                    &kvm->irqfds.resampler_list, link) {
+                        if (resampler->notifier.gsi == irqfd->gsi) {
+                                irqfd->resampler = resampler;
+                                break;
+                        }
+                }
+
+                if (!irqfd->resampler) {
+                        resampler = kzalloc(sizeof(*resampler), GFP_KERNEL);
+                        if (!resampler) {
+                                ret = -ENOMEM;
+                                mutex_unlock(&kvm->irqfds.resampler_lock);
+                                goto fail;
+                        }
+
+                        resampler->kvm = kvm;
+                        INIT_LIST_HEAD(&resampler->list);
+                        resampler->notifier.gsi = irqfd->gsi;
+                        resampler->notifier.irq_acked = irqfd_resampler_ack;
+                        INIT_LIST_HEAD(&resampler->link);
+
+                        list_add(&resampler->link, &kvm->irqfds.resampler_list);
+                        kvm_register_irq_ack_notifier(kvm,
+                                                      &resampler->notifier);
+                        irqfd->resampler = resampler;
+                }
+
+                list_add_rcu(&irqfd->resampler_link, &irqfd->resampler->list);
+                synchronize_srcu(&kvm->irq_srcu);
+
+                mutex_unlock(&kvm->irqfds.resampler_lock);
+        }
+
+        /*
+         * Install our own custom wake-up handling so we are notified via
+         * a callback whenever someone signals the underlying eventfd
+         */
+        init_waitqueue_func_entry(&irqfd->wait, irqfd_wakeup);
+        init_poll_funcptr(&irqfd->pt, irqfd_ptable_queue_proc);
+
+        spin_lock_irq(&kvm->irqfds.lock);
+
+        ret = 0;
+        list_for_each_entry(tmp, &kvm->irqfds.items, list) {
+                if (irqfd->eventfd != tmp->eventfd)
+                        continue;
+                /* This fd is used for another irq already. */
+                ret = -EBUSY;
+                spin_unlock_irq(&kvm->irqfds.lock);
+                goto fail;
+        }
+
+        idx = srcu_read_lock(&kvm->irq_srcu);
+        irqfd_update(kvm, irqfd);
+        srcu_read_unlock(&kvm->irq_srcu, idx);
+
+        list_add_tail(&irqfd->list, &kvm->irqfds.items);
+
+        spin_unlock_irq(&kvm->irqfds.lock);
+
+        /*
+         * Check if there was an event already pending on the eventfd
+         * before we registered, and trigger it as if we didn't miss it.
+         */
+        events = f.file->f_op->poll(f.file, &irqfd->pt);
+
+        if (events & POLLIN)
+                schedule_work(&irqfd->inject);
+
+        /*
+         * do not drop the file until the irqfd is fully initialized, otherwise
+         * we might race against the POLLHUP
+         */
+        fdput(f);
+#ifdef CONFIG_HAVE_KVM_IRQ_BYPASS
+        irqfd->consumer.token = (void *)irqfd->eventfd;
+        irqfd->consumer.add_producer = kvm_arch_irq_bypass_add_producer;
+        irqfd->consumer.del_producer = kvm_arch_irq_bypass_del_producer;
+        irqfd->consumer.stop = kvm_arch_irq_bypass_stop;
+        irqfd->consumer.start = kvm_arch_irq_bypass_start;
+        ret = irq_bypass_register_consumer(&irqfd->consumer);
+        if (ret)
+                pr_info("irq bypass consumer (token %p) registration fails: %d\n",
+                                irqfd->consumer.token, ret);
+#endif
+
+        return 0;
+
+fail:
+        if (irqfd->resampler)
+                irqfd_resampler_shutdown(irqfd);
+
+        if (resamplefd && !IS_ERR(resamplefd))
+                eventfd_ctx_put(resamplefd);
+
+        if (eventfd && !IS_ERR(eventfd))
+                eventfd_ctx_put(eventfd);
+
+        fdput(f);
+
+out:
+        kfree(irqfd);
+        return ret;
+}
+
+
+
+-----------------------------------------------------------------------------
+
+2018-03-20T17:37:38.305265+00:00 compute-0-1 kernel: [1625342.861076] INFO: task kworker/u96:0:30946 blocked for more than 120 seconds.
+2018-03-20T17:37:38.305278+00:00 compute-0-1 kernel: [1625342.861079]       Not tainted 4.4.0-91-generic #114~14.04.1-Ubuntu
+2018-03-20T17:37:38.305280+00:00 compute-0-1 kernel: [1625342.861080] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+2018-03-20T17:37:38.305281+00:00 compute-0-1 kernel: [1625342.861081] kworker/u96:0   D ffff8811b2cb7c58     0 30946      2 0x00000080
+2018-03-20T17:37:38.305283+00:00 compute-0-1 kernel: [1625342.861104] Workqueue: kvm-irqfd-cleanup irqfd_shutdown [kvm]
+2018-03-20T17:37:38.305289+00:00 compute-0-1 kernel: [1625342.861106]  ffff8811b2cb7c58 ffff881038f12a00 ffff88028d6d8000 ffff8811b2cb8000
+2018-03-20T17:37:38.305291+00:00 compute-0-1 kernel: [1625342.861108]  ffff8811b2cb7da8 ffff8811b2cb7da0 ffff88028d6d8000 ffff8812b592eae0
+2018-03-20T17:37:38.305292+00:00 compute-0-1 kernel: [1625342.861109]  ffff8811b2cb7c70 ffffffff818094b5 7fffffffffffffff ffff8811b2cb7d18
+2018-03-20T17:37:38.305293+00:00 compute-0-1 kernel: [1625342.861111] Call Trace:
+2018-03-20T17:37:38.305293+00:00 compute-0-1 kernel: [1625342.861117]  [<ffffffff818094b5>] schedule+0x35/0x80
+2018-03-20T17:37:38.305294+00:00 compute-0-1 kernel: [1625342.861119]  [<ffffffff8180be77>] schedule_timeout+0x237/0x2d0
+2018-03-20T17:37:38.305294+00:00 compute-0-1 kernel: [1625342.861122]  [<ffffffff810a7309>] ? resched_curr+0xa9/0xd0
+2018-03-20T17:37:38.305295+00:00 compute-0-1 kernel: [1625342.861123]  [<ffffffff810a7d45>] ? check_preempt_curr+0x75/0x90
+2018-03-20T17:37:38.305296+00:00 compute-0-1 kernel: [1625342.861125]  [<ffffffff810a8919>] ? try_to_wake_up+0x49/0x3d0
+2018-03-20T17:37:38.305297+00:00 compute-0-1 kernel: [1625342.861127]  [<ffffffff810b31df>] ? update_curr+0xdf/0x170
+2018-03-20T17:37:38.305298+00:00 compute-0-1 kernel: [1625342.861129]  [<ffffffff81809dd4>] wait_for_completion+0xa4/0x110
+2018-03-20T17:37:38.305299+00:00 compute-0-1 kernel: [1625342.861130]  [<ffffffff810a8d40>] ? wake_up_q+0x80/0x80
+2018-03-20T17:37:38.305299+00:00 compute-0-1 kernel: [1625342.861133]  [<ffffffff81096127>] flush_work+0xf7/0x170
+2018-03-20T17:37:38.305300+00:00 compute-0-1 kernel: [1625342.861134]  [<ffffffff81093f80>] ? destroy_worker+0x90/0x90
+2018-03-20T17:37:38.305301+00:00 compute-0-1 kernel: [1625342.861142]  [<ffffffffc0450506>] irqfd_shutdown+0x36/0x80 [kvm]
+2018-03-20T17:37:38.305302+00:00 compute-0-1 kernel: [1625342.861144]  [<ffffffff81096da0>] process_one_work+0x150/0x3f0
+2018-03-20T17:37:38.305303+00:00 compute-0-1 kernel: [1625342.861145]  [<ffffffff8109751a>] worker_thread+0x11a/0x470
+2018-03-20T17:37:38.305304+00:00 compute-0-1 kernel: [1625342.861147]  [<ffffffff81097400>] ? rescuer_thread+0x310/0x310
+2018-03-20T17:37:38.305304+00:00 compute-0-1 kernel: [1625342.861149]  [<ffffffff8109cdd6>] kthread+0xd6/0xf0
+2018-03-20T17:37:38.305305+00:00 compute-0-1 kernel: [1625342.861150]  [<ffffffff8109cd00>] ? kthread_park+0x60/0x60
+2018-03-20T17:37:38.305306+00:00 compute-0-1 kernel: [1625342.861151]  [<ffffffff8180d0cf>] ret_from_fork+0x3f/0x70
+2018-03-20T17:37:38.305307+00:00 compute-0-1 kernel: [1625342.861152]  [<ffffffff8109cd00>] ? kthread_park+0x60/0x60
+
+
+-----------------------------------------------------------------------------
+
 
 [<ffffffffc0450506>] irqfd_shutdown+0x36/0x80 [kvm]
 
@@ -2357,3 +2640,5 @@ EXPORT_SYMBOL(schedule);
 2018-04-19T16:51:35.672484+00:00 compute-0-3 kernel: [ 1800.762199]  [<ffffffff81003176>] ? do_audit_syscall_entry+0x66/0x70
 2018-04-19T16:51:35.672485+00:00 compute-0-3 kernel: [ 1800.762200]  [<ffffffff811d7014>] SyS_mbind+0x84/0xa0
 2018-04-19T16:51:35.672486+00:00 compute-0-3 kernel: [ 1800.762202]  [<ffffffff8180cd36>] entry_SYSCALL_64_fastpath+0x16/0x75
+
+					   
